@@ -1,8 +1,6 @@
 import asyncio
 from datetime import (
-    datetime,
-    timedelta,
-    timezone,
+    datetime
 )
 import logging
 import os
@@ -60,13 +58,13 @@ def setup_logging():
 
 def get_page(timestamp, get_next_page_href):
     ''' Creates dummy activities where one has been created every second for the past 24 hours'''
-    now = datetime.now(timezone.utc).replace(microsecond=0)
-    one_day_ago = now - timedelta(hours=24)
+    # now = datetime.now(timezone.utc).replace(microsecond=0)
+    # one_day_ago = now - timedelta(hours=24)
 
-    first_timestamp = int(one_day_ago.timestamp())
-    final_timestamp = int(now.timestamp())
+    first_timestamp = 1  # int(one_day_ago.timestamp())
+    final_timestamp = 5000  # int(now.timestamp())
 
-    max_per_page = 1000
+    max_per_page = 100
     first_timestamp_of_page = max(first_timestamp, timestamp)
     final_timestamp_of_page = min(first_timestamp_of_page + max_per_page, final_timestamp)
     timestamps = range(first_timestamp_of_page, final_timestamp_of_page)

@@ -32,8 +32,8 @@ from .dns import (
 )
 from .elasticsearch import (
     es_min_verification_age,
+    es_request_non_200_exception
 )
-
 from .feeds import (
     parse_feed_config,
 )
@@ -77,6 +77,7 @@ from .utils import (
     main,
     normalise_environment,
     sleep,
+    json_dumps,
 )
 from . import settings
 
@@ -375,7 +376,37 @@ async def fetch_and_ingest_page(context, ingest_type, feed, activity_index_names
             feed_parsed = json_loads(feed_contents)
 
         with logged(context.logger.debug, context.logger.warning, 'Converting to activities', []):
+            print('******')
             activities = await feed.get_activities(context, feed_parsed)
+            urls = ' '.join([activity['object']['url'] for activity in activities])
+            print('urls')
+            print(urls)
+            payload = json_dumps({
+                'query': {'match': {
+                    'url': {
+                        'query': urls,
+                    }
+                }}
+            })
+            result = await es_request_non_200_exception(
+                context=context,
+                method='GET',
+                path=f'/metadata/_search',
+                query={'ignore_unavailable': 'true'},
+                headers={'Content-Type': 'application/json'},
+                payload=payload,
+            )
+            result_dict = json_loads(result._body)
+            all_metadata = [hit['_source'] for hit in result_dict['hits']['hits']]
+            metadata_urls = [metadata['url'] for metadata in all_metadata]
+            print('metadata_urls')
+            print(metadata_urls)
+            for activity in activities:
+                if activity['object']['url'] in metadata_urls:
+                    index = metadata_urls.index(activity['object']['url'])
+                    activity['object']['metadata'] = all_metadata[index]['data']
+            print('activities')
+            print(activities)
 
         num_es_documents = len(activities) * (len(activity_index_names) + len(objects_index_names))
         with \

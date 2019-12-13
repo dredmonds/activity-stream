@@ -359,6 +359,18 @@ async def create_objects_index(context, index_name):
                         'endTime': {
                             'type': 'date',
                         },
+                        'industry.AEROSPACE': {
+                            'type': 'double'
+                        },
+                        'industry.LEISURE_AND_TOURISM': {
+                            'type': 'double'
+                        },
+                        'industry.EDUCATION': {
+                            'type': 'double'
+                        },
+                        'industry.CONSTRUCTION': {
+                            'type': 'double'
+                        },
                         # Not AS 2.0, but is used, and is a space-separated
                         # list of keywords
                         'keywords': {
