@@ -201,10 +201,10 @@ async def ingest_feeds(context, feeds):
     await asyncio.gather(*[
         repeat_until_cancelled(
             context, feed.exception_intervals,
-            to_repeat=ingest_func, to_repeat_args=(context, feed),
+            to_repeat=ingest_func, to_repeat_args=(context, feed)
         )
         for feed in feeds
-        for ingest_func in (ingest_full, ingest_updates)
+        for (ingest_func, min_duration) in ((ingest_full, 120), (ingest_updates, 0))
     ])
 
 
