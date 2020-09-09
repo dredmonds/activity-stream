@@ -65,7 +65,7 @@ class Feed(metaclass=ABCMeta):
         pass
 
     @classmethod
-    async def pages(cls, context, feed, ingest_type):
+    async def pages(cls, context, feed, href, ingest_type):
         """
         async generator yielding 200 records at a time
         """
@@ -103,18 +103,18 @@ class Feed(metaclass=ABCMeta):
                     )
                     await sleep(context, int(client_error.headers['Retry-After']))
 
-        async def gen_source_pages():
-            href = feed.seed
-            while href:
+        async def gen_source_pages(href):
+            updates_href = href
+            while updates_href:
                 # Lock so there is only 1 request per feed at any given time
                 async with feed.lock:
                     with \
                             logged(logger.info, logger.warning, 'Polling page (%s)',
-                                   [href]), \
+                                   [updates_href]), \
                             metric_timer(context.metrics['ingest_page_duration_seconds'],
                                          [feed.unique_id, ingest_type, 'pull']):
                         feed_contents = await fetch_page(
-                            context, href, await feed.auth_headers(context, href),
+                            context, updates_href, await feed.auth_headers(context, updates_href),
                         )
 
                 with logged(logger.debug, logger.warning, 'Parsing JSON', []):
@@ -123,33 +123,30 @@ class Feed(metaclass=ABCMeta):
                 with logged(logger.debug, logger.warning, 'Convert to activities', []):
                     activities = await feed.get_activities(context, feed_parsed)
 
-                yield activities, href
-                href = feed.next_href(feed_parsed)
+                yield activities, updates_href
+                updates_href = feed.next_href(feed_parsed)
 
         async def gen_evenly_sized_pages(source_pages):
             # pylint: disable=undefined-loop-variable
             page_size = 200
             current = []
-            async for activities, href in source_pages:
+            async for activities, updates_href in source_pages:
                 current.extend(activities)
 
                 while len(current) >= page_size:
                     to_yield, current = current[:page_size], current[page_size:]
-                    yield to_yield, href
+                    yield to_yield, updates_href
 
             if current:
-                yield current, href
+                yield current, updates_href
 
-        source_pages = gen_source_pages()
+        source_pages = gen_source_pages(href)
         evenly_sized_pages = gen_evenly_sized_pages(source_pages)
 
         # Would be nicer if could "yield from", but there is no
         # language support for doing that in async generator
-        async for page, href in evenly_sized_pages:
-            yield page, href
-
-    class Meta:
-        abstract: True
+        async for page, updates_href in evenly_sized_pages:
+            yield page, updates_href
 
 
 class ActivityStreamFeed(Feed):

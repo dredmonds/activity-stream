@@ -260,7 +260,7 @@ async def ingest_full(parent_context, feed):
         activities_schemas = set()
         objects_schemas = set()
 
-        async for page_of_activities, href in feed.pages(context, feed, 'full'):
+        async for page_of_activities, href in feed.pages(context, feed, feed.seed, 'full'):
             updates_href = href
 
             activities_schemas_page, objects_schemas_page = await ingest_page(
@@ -337,7 +337,7 @@ async def ingest_updates(parent_context, feed):
             activities_schemas = set()
             objects_schemas = set()
 
-            async for page_of_activities, href in feed.pages(context, feed, 'updates'):
+            async for page_of_activities, href in feed.pages(context, feed, href, 'updates'):
                 updates_href = href
                 activities_schemas_page, objects_schemas_page = await ingest_page(
                     context, page_of_activities, 'updates', feed,
