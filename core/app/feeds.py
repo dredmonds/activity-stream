@@ -679,18 +679,26 @@ class MaxemailFeed(Feed):
             url = feed.campaign_url
             payload = {'method': 'find', 'emailId': email_campaign_id}
 
-            with logged(context.logger.debug, context.logger.warning,
-                        'maxemail Fetching campaign (%s) with payload (%s)', [url, payload]):
-                result = await http_make_request(
-                    context.single_use_session,
-                    context.metrics,
-                    'POST',
-                    url,
-                    data=payload,
-                    headers=await feed.auth_headers(None, None),
-                )
-                result.raise_for_status()
-
+            for _ in range(0, 5):
+                try:
+                    with logged(context.logger.debug, context.logger.warning,
+                                'maxemail Fetching campaign (%s) with payload (%s)', [url, payload]):
+                        result = await http_make_request(
+                            context.single_use_session,
+                            context.metrics,
+                            'POST',
+                            url,
+                            data=payload,
+                            headers=await feed.auth_headers(None, None),
+                            timeout=600,
+                        )
+                        result.raise_for_status()
+                except (asyncio.TimeoutError, aiohttp.ClientPayloadError):
+                    await asyncio.sleep(10)
+                else:
+                    break
+            if result.status != 200:
+                raise Exception("Failed fetching maxemail campain {} with payload {}".format(url, payload))
             campaign = json_loads(result._body)
             year, time = campaign['start_ts'].split(' ')
             timestamp = f'{year}T{time}'

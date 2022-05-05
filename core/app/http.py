@@ -5,12 +5,12 @@ from .metrics import (
 )
 
 
-async def http_make_request(session, metrics, method, url, data, headers, params=()):
+async def http_make_request(session, metrics, method, url, data, headers, params=(), timeout=300):
     parsed_url = yarl.URL(url)
 
     with metric_timer(metrics['http_request_duration_seconds'], [parsed_url.host]):
         async with session.request(
-                method, parsed_url, data=data, headers=headers, params=params
+                method, parsed_url, data=data, headers=headers, params=params, timeout=timeout
         ) as result:
             # We must read the body before the connection is closed, which can
             # be on exit of the context manager
